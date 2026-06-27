@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel — Spin & Win</title>
+  <style>
+    :root {
+      --bg: #0D0D0F; --surface: #16161A; --card: #1E1E24;
+      --border: #2A2A35; --accent: #C8A96E; --accent2: #E8C98E;
+      --text: #F0EDE8; --muted: #7A7A8C; --danger: #E05C5C;
+      --success: #5CB88A; --radius: 12px; --font: 'Segoe UI', system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+      padding: 28px 16px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+    }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: var(--accent); padding: 0 8px 24px; }
+    .nav-item {
+      padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px;
+      color: var(--muted); transition: all 0.15s; display: flex; align-items: center; gap: 10px;
+    }
+    .nav-item:hover { background: var(--card); color: var(--text); }
+    .nav-item.active { background: rgba(200,169,110,0.12); color: var(--accent); font-weight: 600; }
+
+    .main { flex: 1; padding: 32px; overflow-y: auto; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+
+    /* ── CARDS ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+    .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--accent); }
+
+    /* ── TABLE ── */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 0 12px 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 12px; border-top: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── INPUTS ── */
+    input[type=text], input[type=url], input[type=number], input[type=password], select {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; color: var(--text); font-size: 14px; font-family: var(--font); outline: none;
+      transition: border-color 0.2s; width: 100%;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+
+    /* ── BUTTONS ── */
+    .btn { padding: 9px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: #0D0D0F; }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-danger { background: rgba(224,92,92,0.15); color: var(--danger); border: 1px solid rgba(224,92,92,0.3); }
+    .btn-danger:hover { background: rgba(224,92,92,0.25); }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn-success { background: rgba(92,184,138,0.15); color: var(--success); border: 1px solid rgba(92,184,138,0.3); }
+    .btn-success:hover { background: rgba(92,184,138,0.25); }
+
+    /* ── BADGE ── */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-win { background: rgba(92,184,138,0.15); color: var(--success); }
+    .badge-lose { background: rgba(122,122,140,0.15); color: var(--muted); }
+
+    /* ── TOGGLE ── */
+    .toggle-wrap { display: flex; align-items: center; gap: 12px; }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 24px; cursor: pointer; transition: 0.2s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: 0.2s; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: #0D0D0F; }
+
+    /* ── COLOR SWATCH ── */
+    input[type=color] { width: 36px; height: 36px; padding: 2px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; background: var(--surface); }
+
+    /* ── STATS ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+    .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .stat-box .val { font-size: 28px; font-weight: 800; color: var(--accent); }
+    .stat-box .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── ADMIN LOGIN ── */
+    #admin-login { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 32px; width: 360px; }
+    .login-box h2 { margin-bottom: 24px; font-size: 20px; }
+
+    /* ── TABS ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── ALERT ── */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--accent); border-radius: 10px; padding: 14px 20px; font-size: 14px; color: var(--accent); display: none; z-index: 999; }
+    .toast.show { display: block; animation: fadeIn 0.2s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 600px) { .sidebar { display: none; } .main { padding: 20px 16px; } }
+  </style>
+</head>
+<body>
+
+<!-- ADMIN LOGIN -->
+<div id="admin-login">
+  <div class="login-box">
+    <h2>🔐 Admin Access</h2>
+    <div style="margin-bottom:14px">
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Admin Phone</label>
+      <input type="text" id="a-phone" placeholder="Admin phone number" />
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Password</label>
+      <input type="password" id="a-pass" placeholder="Admin password" />
+    </div>
+    <button class="btn btn-primary" style="width:100%" id="btnAdminLogin">Sign In</button>
+    <div id="a-err" style="color:var(--danger);font-size:13px;margin-top:12px;display:none"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="layout" id="admin-panel" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-logo">⚙️ Admin</div>
+    <div class="nav-item active" data-tab="dashboard">📊 Dashboard</div>
+    <div class="nav-item" data-tab="slots">🎡 Wheel Slots</div>
+    <div class="nav-item" data-tab="settings">🔧 Settings</div>
+    <div class="nav-item" data-tab="leads">👥 Leads</div>
+    <div class="nav-item" data-tab="winners">🏆 Winners</div>
+    <div class="nav-item" data-tab="ip">🌐 IP Control</div>
+    <div style="margin-top:auto">
+      <div class="nav-item" id="btnAdminLogout">🚪 Logout</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="stat-grid" id="stats-grid">
+        <div class="stat-box"><div class="val" id="stat-users">—</div><div class="lbl">Total Users</div></div>
+        <div class="stat-box"><div class="val" id="stat-spins">—</div><div class="lbl">Total Spins</div></div>
+        <div class="stat-box"><div class="val" id="stat-winners">—</div><div class="lbl">Winners Today</div></div>
+        <div class="stat-box"><div class="val" id="stat-leads">—</div><div class="lbl">Phone Leads</div></div>
+      </div>
+    </div>
+
+    <!-- SLOTS -->
+    <div class="tab-panel" id="tab-slots">
+      <div class="page-title">Wheel Slots</div>
+      <div class="card">
+        <h3>Edit Slots (10 max)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Slot Name</th><th>Product URL</th><th>Type</th><th>Weight</th><th>Color</th><th>Save</th>
+            </tr>
+          </thead>
+          <tbody id="slots-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="page-title">Settings</div>
+      <div class="card">
+        <h3>Win Control</h3>
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">IP Win Rate (%)</label>
+            <input type="number" id="set-win-rate" min="0" max="100" style="max-width:120px" />
+            <p style="font-size:12px;color:var(--muted);margin-top:6px">% of spins from same IP that result in a win</p>
+          </div>
+
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Max Wins Per IP Per Day</label>
+            <input type="number" id="set-max-wins" min="0" style="max-width:120px" />
+          </div>
+
+          <div class="toggle-wrap">
+            <label class="toggle">
+              <input type="checkbox" id="set-force-win" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div>
+              <div style="font-size:14px;font-weight:600">Force Next Win</div>
+              <div style="font-size:12px;color:var(--muted)">Next spin globally will win regardless of IP rate</div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" style="align-self:flex-start" id="btnSaveSettings">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADS -->
+    <div class="tab-panel" id="tab-leads">
+      <div class="page-title">Phone Leads</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 style="margin-bottom:0">All Registered Users</h3>
+          <button class="btn btn-primary btn-sm" id="btnExportLeads">⬇ Export CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>Phone</th><th>Joined</th><th>Referrals</th><th>Spins Used</th><th>Spins Left</th></tr></thead>
+          <tbody id="leads-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- WINNERS -->
+    <div class="tab-panel" id="tab-winners">
+      <div class="page-title">Winners</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Phone</th><th>Prize</th><th>Won At</th><th>IP</th></tr></thead>
+          <tbody id="winners-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- IP CONTROL -->
+    <div class="tab-panel" id="tab-ip">
+      <div class="page-title">IP Win Tracking</div>
+      <div class="card">
+        <h3>Today's IP Activity</h3>
+        <table>
+          <thead><tr><th>IP / Fingerprint</th><th>Spins Today</th><th>Wins Today</th><th>Win Rate</th></tr></thead>
+          <tbody id="ip-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="admin.js"></script>
+</body>
+</html>

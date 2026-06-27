@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spin & Win</title>
+  <style>
+    /* ── TOKENS ─────────────────────────────────────── */
+    :root {
+      --bg:        #0D0D0F;
+      --surface:   #16161A;
+      --card:      #1E1E24;
+      --border:    #2A2A35;
+      --accent:    #C8A96E;
+      --accent2:   #E8C98E;
+      --text:      #F0EDE8;
+      --muted:     #7A7A8C;
+      --danger:    #E05C5C;
+      --success:   #5CB88A;
+      --radius:    14px;
+      --font:      'Segoe UI', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ───────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── AUTH SCREENS ────────────────────────────────── */
+    .screen {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      display: none;
+      flex-direction: column;
+      gap: 0;
+    }
+    .screen.active { display: flex; }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .brand-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .brand h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+    .brand p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+    }
+
+    .card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .field label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .field input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--muted); opacity: 0.5; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font);
+      margin-top: 8px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0D0D0F;
+    }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); }
+
+    .switch-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .switch-link a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert.show { display: block; }
+    .alert-error { background: rgba(224,92,92,0.12); color: var(--danger); border: 1px solid rgba(224,92,92,0.25); }
+    .alert-success { background: rgba(92,184,138,0.12); color: var(--success); border: 1px solid rgba(92,184,138,0.25); }
+
+    .otp-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* ── MAIN SPIN SCREEN ────────────────────────────── */
+    #screen-spin {
+      max-width: 600px;
+      align-items: center;
+    }
+
+    .top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .top-bar .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .spin-count-badge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .spin-count-badge span { color: var(--accent); font-weight: 700; }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 340px;
+      height: 340px;
+      margin: 0 auto 28px;
+    }
+
+    /* Glow ring */
+    .wheel-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: conic-gradient(var(--accent), transparent, var(--accent), transparent, var(--accent));
+      animation: spin-glow 8s linear infinite;
+      opacity: 0.4;
+    }
+    @keyframes spin-glow { to { transform: rotate(360deg); } }
+
+    canvas#wheel {
+      position: relative;
+      z-index: 2;
+      border-radius: 50%;
+      display: block;
+    }
+
+    /* Pointer/arrow */
+    .wheel-pointer {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+
+    .spin-btn-wrap {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+    #btnSpin {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0D0D0F;
+      font-weight: 800;
+      font-size: 13px;
+      border: 4px solid var(--bg);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.2;
+      letter-spacing: 0.3px;
+      box-shadow: 0 0 0 3px var(--accent), 0 0 20px rgba(200,169,110,0.3);
+    }
+    #btnSpin:hover:not(:disabled) { transform: scale(1.07); }
+    #btnSpin:disabled { background: var(--border); cursor: not-allowed; box-shadow: none; color: var(--muted); }
+
+    .referral-card {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .referral-info h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .referral-info p {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .referral-info p strong { color: var(--accent); }
+    .referral-code-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent);
+      cursor: pointer;
+      transition: border-color 0.2s;
+      white-space: nowrap;
+    }
+    .referral-code-box:hover { border-color: var(--accent); }
+
+    .logout-link {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .logout-link:hover { color: var(--danger); }
+
+    /* ── WIN OVERLAY ─────────────────────────────────── */
+    #winOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 20px;
+    }
+    #winOverlay.show { display: flex; }
+
+    .confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    .win-card {
+      background: var(--card);
+      border: 2px solid var(--accent);
+      border-radius: 20px;
+      padding: 40px 36px;
+      max-width: 380px;
+      width: 100%;
+      position: relative;
+      z-index: 101;
+    }
+    .win-emoji { font-size: 56px; margin-bottom: 12px; display: block; }
+    .win-title { font-size: 28px; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+    .win-prize { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .win-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+    .win-timer { font-size: 13px; color: var(--muted); margin-top: 12px; }
+    .win-timer strong { color: var(--accent2); }
+
+    /* ── NO LUCK OVERLAY ────────────────────────────── */
+    #loseOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #loseOverlay.show { display: flex; }
+    .lose-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+    }
+    .lose-emoji { font-size: 48px; margin-bottom: 12px; display: block; }
+    .lose-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .lose-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+    /* ── LOADING ─────────────────────────────────────── */
+    .loader {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(200,169,110,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESPONSIVE ──────────────────────────────────── */
+    @media (max-width: 400px) {
+      .wheel-wrapper { width: 280px; height: 280px; }
+      canvas#wheel { width: 280px !important; height: 280px !important; }
+      .card { padding: 24px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ REGISTER ══════════════════════════════════════════ -->
+<div class="screen active" id="screen-register">
+  <div class="brand">
+    <span class="brand-icon">🎡</span>
+    <h1>Spin & Win</h1>
+    <p>Register once. Spin. Win big.</p>
+  </div>
+  <div class="card">
+    <h2>Create Account</h2>
+    <div class="alert alert-error" id="reg-error"></div>
+    <div class="alert alert-success" id="reg-success"></div>
+    <div class="field">
+      <label>Phone Number</label>
+      <input type="tel" id="reg-phone" placeholder="10-digit mobile number" maxlength="10" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="reg-password" placeholder="Create a password" />
+    </div>
+    <div class="field" id="ref-field" style="display:none">
+      <label>Referral Code <span style="color:var(--muted)">(auto-filled)</span></label>
+      <input type="text" id="reg-referral" placeholder="Enter referral code" />
+    </div>
+    <button class="btn btn-primary" id="btnRegister">Send OTP</button>
+    <p class="otp-note">An OTP will be sent to verify your number</p>
+  </div>
+  <div class="switch-link">Already have an account? <a href="#" id="goLogin">Sign In</a></div>
+</div>
+
+<!-- ══ OTP VERIFICATION ══════════════════════════════════ -->
+<div class="screen" id="screen-otp">
+  <div class="brand">
+    <span class="brand-icon">🔐</span>
+    <h1>Verify OTP</h1>
+    <p id="otp-phone-hint">Sent to your number</p>
+  </div>
+  <div class="card">
+    <h2>Enter OTP</h2>
+    <div class="alert alert-error" id="otp-error"></div>
+    <div class="field">
+      <label>6-digit OTP</label>
+      <input type="number" id="otp-input" placeholder="Enter OTP" maxlength="6" />
+    </div>
+    <button class="btn btn-primary" id="btnVerifyOtp">Verify & Continue</button>
+    <button class="btn btn-ghost" id="btnResendOtp" style="margin-top:10px">Resend OTP</button>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══════════════════════════════════════════════ -->
+<div class="screen" id="screen-login">
+  <div class="brand">
+    <span class="brand-icon">🎡</span>
+    <h1>Spin & Win</h1>
+    <p>Welcome back!</p>
+  </div>
+  <div class="card">
+    <h2>Sign In</h2>
+    <div class="alert alert-error" id="login-error"></div>
+    <div class="field">
+      <label>Phone Number</label>
+      <input type="tel" id="login-phone" placeholder="10-digit mobile number" maxlength="10" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Your password" />
+    </div>
+    <button class="btn btn-primary" id="btnLogin">Sign In</button>
+  </div>
+  <div class="switch-link">New here? <a href="#" id="goRegister">Create Account</a></div>
+</div>
+
+<!-- ══ SPIN SCREEN ════════════════════════════════════════ -->
+<div class="screen" id="screen-spin">
+  <div class="top-bar">
+    <div class="logo">🎡 Spin & Win</div>
+    <div class="spin-count-badge">Spins: <span id="spinsLeft">0</span></div>
+  </div>
+
+  <div class="wheel-wrapper">
+    <!-- Pointer SVG -->
+    <svg class="wheel-pointer" width="32" height="40" viewBox="0 0 32 40">
+      <polygon points="16,38 2,4 30,4" fill="#C8A96E" stroke="#0D0D0F" stroke-width="2"/>
+    </svg>
+    <canvas id="wheel" width="340" height="340"></canvas>
+    <div class="spin-btn-wrap">
+      <button id="btnSpin">SPIN!</button>
+    </div>
+  </div>
+
+  <div class="referral-card">
+    <div class="referral-info">
+      <h3>Earn More Spins</h3>
+      <p>Share your code. Every <strong>10 friends</strong> who register = <strong>1 extra spin</strong></p>
+      <p style="margin-top:6px">Referred: <strong id="referralCount">0</strong> / 10 for next spin</p>
+    </div>
+    <div class="referral-code-box" id="referralCodeDisplay" title="Click to copy">
+      LOADING
+    </div>
+  </div>
+
+  <button class="buy-spins-btn" disabled title="Coming Soon">
+    🛒 Buy Spins &nbsp;<span class="coming-soon-pill">Coming Soon</span>
+  </button>
+
+  <span class="logout-link" id="btnLogout">Sign out</span>
+</div>
+
+<!-- ══ WIN OVERLAY ════════════════════════════════════════ -->
+<canvas class="confetti-canvas" id="confettiCanvas"></canvas>
+<div id="winOverlay">
+  <div class="win-card">
+    <span class="win-emoji">🎉</span>
+    <div class="win-title">You Won!</div>
+    <div class="win-prize" id="winPrizeName"></div>
+    <div class="win-subtitle">Login with this number on our store to redeem your offer</div>
+    <button class="btn btn-primary" id="btnGoToStore">Claim Your Offer →</button>
+    <div class="win-timer">Redirecting in <strong id="redirectCountdown">5</strong>s…</div>
+  </div>
+</div>
+
+<!-- ══ LOSE OVERLAY ═══════════════════════════════════════ -->
+<div id="loseOverlay">
+  <div class="lose-card">
+    <span class="lose-emoji">😔</span>
+    <div class="lose-title">Better Luck Next Time!</div>
+    <div class="lose-sub">Refer 10 friends to get your next spin</div>
+    <button class="btn btn-primary" id="btnCloseLose">Got It</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
